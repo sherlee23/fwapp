@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FengWei Pai 管理后台系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 登录界面 -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>FengWei Pai 管理后台</h1>
+                <p>请输入管理员密码</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label class="form-label">管理员密码</label>
+                    <input type="password" id="adminPassword" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn--primary btn--full-width">登录</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 主应用界面 -->
+    <div id="mainApp" class="main-app" style="display: none;">
+        <!-- 顶部导航栏 -->
+        <header class="header">
+            <div class="header-left">
+                <h1>FengWei Pai 管理后台</h1>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span>管理员</span>
+                    <span class="user-role">超级管理员</span>
+                </div>
+                <button class="btn btn--outline btn--sm" onclick="logout()">退出</button>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <div class="main-layout">
+            <!-- 左侧导航菜单 -->
+            <nav class="sidebar">
+                <ul class="nav-menu">
+                    <li class="nav-item active" data-view="dashboard">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">仪表板</span>
+                    </li>
+                    <li class="nav-item" data-view="products">
+                        <span class="nav-icon">🍕</span>
+                        <span class="nav-text">产品管理</span>
+                    </li>
+                    <li class="nav-item" data-view="inventory">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-text">库存管理</span>
+                    </li>
+                    <li class="nav-item" data-view="orders">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-text">订单管理</span>
+                    </li>
+                    <li class="nav-item" data-view="scanner">
+                        <span class="nav-icon">📱</span>
+                        <span class="nav-text">扫码功能</span>
+                    </li>
+                    <li class="nav-item" data-view="camera">
+                        <span class="nav-icon">📷</span>
+                        <span class="nav-text">拍照功能</span>
+                    </li>
+                    <li class="nav-item" data-view="analytics">
+                        <span class="nav-icon">📈</span>
+                        <span class="nav-text">数据分析</span>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- 主要内容区域 -->
+            <main class="content">
+                <!-- 仪表板视图 -->
+                <div id="dashboard" class="view active">
+                    <div class="page-header">
+                        <h2>仪表板</h2>
+                        <p>业务概览和关键指标</p>
+                    </div>
+                    
+                    <!-- 统计卡片 -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-content">
+                                <h3>今日销售额</h3>
+                                <p class="stat-value" id="todaySales">¥0</p>
+                                <p class="stat-change">本月累计: ¥0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📋</div>
+                            <div class="stat-content">
+                                <h3>今日订单</h3>
+                                <p class="stat-value" id="todayOrders">0</p>
+                                <p class="stat-change">待处理: 0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🍕</div>
+                            <div class="stat-content">
+                                <h3>在售产品</h3>
+                                <p class="stat-value" id="availableProducts">0</p>
+                                <p class="stat-change status--warning">低库存: 0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📦</div>
+                            <div class="stat-content">
+                                <h3>总库存</h3>
+                                <p class="stat-value" id="totalStock">0</p>
+                                <p class="stat-change">库存价值: ¥0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 图表区域 -->
+                    <div class="chart-section">
+                        <div class="card">
+                            <div class="card__body">
+                                <h3>销售趋势</h3>
+                                <canvas id="salesChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 产品库存状态 -->
+                    <div class="recent-orders">
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>库存状态</h3>
+                            </div>
+                            <div class="card__body">
+                                <div id="stockStatus" class="stock-status-grid">
+                                    <!-- 动态插入 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 产品管理视图 -->
+                <div id="products" class="view">
+                    <div class="page-header">
+                        <h2>产品管理</h2>
+                        <div class="header-actions">
+                            <button class="btn btn--secondary" onclick="syncProducts()">同步产品</button>
+                            <button class="btn btn--primary" onclick="openAddProductModal()">添加产品</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card__body">
+                            <div class="table-controls">
+                                <div class="search-box">
+                                    <input type="text" placeholder="搜索产品..." class="form-control" id="productSearch">
+                                </div>
+                                <div class="filter-controls">
+                                    <select class="form-control" id="categoryFilter">
+                                        <option value="">全部分类</option>
+                                        <option value="烤肠系列">烤肠系列</option>
+                                        <option value="虾肠系列">虾肠系列</option>
+                                        <option value="披萨系列">披萨系列</option>
+                                        <option value="小笼汤包系列">小笼汤包系列</option>
+                                        <option value="酥饼系列">酥饼系列</option>
+                                        <option value="鸡排系列">鸡排系列</option>
+                                        <option value="鸡翅系列">鸡翅系列</option>
+                                        <option value="纸皮烧卖系列">纸皮烧卖系列</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>表情</th>
+                                        <th>产品名称</th>
+                                        <th>价格</th>
+                                        <th>库存</th>
+                                        <th>分类</th>
+                                        <th>状态</th>
+                                        <th>上架状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productsTable">
+                                    <!-- 动态插入 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 库存管理视图 -->
+                <div id="inventory" class="view">
+                    <div class="page-header">
+                        <h2>库存管理</h2>
+                        <button class="btn btn--primary" onclick="openInventoryModal()">库存调整</button>
+                    </div>
+                    
+                    <div class="inventory-grid">
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>库存概览</h3>
+                            </div>
+                            <div class="card__body">
+                                <div class="inventory-summary">
+                                    <div class="summary-item">
+                                        <h4>总库存</h4>
+                                        <p id="totalInventory">0</p>
+                                    </div>
+                                    <div class="summary-item">
+                                        <h4>库存价值</h4>
+                                        <p id="inventoryValue">¥0</p>
+                                    </div>
+                                    <div class="summary-item">
+                                        <h4>低库存商品</h4>
+                                        <p id="lowStockCount">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>库存记录</h3>
+                            </div>
+                            <div class="card__body">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>产品</th>
+                                            <th>类型</th>
+                                            <th>数量</th>
+                                            <th>日期</th>
+                                            <th>操作人</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inventoryTable">
+                                        <!-- 动态插入 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 订单管理视图 -->
+                <div id="orders" class="view">
+                    <div class="page-header">
+                        <h2>订单管理</h2>
+                        <div class="header-actions">
+                            <button class="btn btn--secondary" onclick="exportOrders()">导出订单</button>
+                            <button class="btn btn--primary" onclick="createOrder()">创建订单</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card__body">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>订单号</th>
+                                        <th>客户信息</th>
+                                        <th>订单日期</th>
+                                        <th>总金额</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ordersTable">
+                                    <!-- 动态插入 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 扫码功能视图 -->
+                <div id="scanner" class="view">
+                    <div class="page-header">
+                        <h2>扫码功能</h2>
+                        <p>扫描产品条码快速管理库存</p>
+                    </div>
+                    
+                    <div class="scanner-container">
+                        <div class="card">
+                            <div class="card__body">
+                                <h3>扫描二维码/条形码</h3>
+                                <div class="scanner-area">
+                                    <div class="scanner-placeholder">
+                                        <div class="scanner-icon">📱</div>
+                                        <p>点击开始扫描</p>
+                                    </div>
+                                </div>
+                                <div class="scanner-controls">
+                                    <button class="btn btn--primary" onclick="startScanning()">开始扫描</button>
+                                    <button class="btn btn--secondary" onclick="stopScanning()">停止扫描</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="scan-result card">
+                            <div class="card__body">
+                                <h3>扫描结果</h3>
+                                <div id="scanResult" class="scan-result-content">
+                                    <p>暂无扫描结果</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 拍照功能视图 -->
+                <div id="camera" class="view">
+                    <div class="page-header">
+                        <h2>拍照功能</h2>
+                        <p>为产品拍照记录库存状态</p>
+                    </div>
+                    
+                    <div class="camera-container">
+                        <div class="card">
+                            <div class="card__body">
+                                <h3>产品拍照</h3>
+                                <div class="camera-area">
+                                    <video id="cameraVideo" autoplay playsinline></video>
+                                    <canvas id="cameraCanvas"></canvas>
+                                </div>
+                                <div class="camera-controls">
+                                    <button class="btn btn--primary" onclick="startCamera()">打开相机</button>
+                                    <button class="btn btn--secondary" onclick="takePicture()">拍照</button>
+                                    <button class="btn btn--outline" onclick="stopCamera()">关闭相机</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="photo-gallery card">
+                            <div class="card__body">
+                                <h3>已拍照片</h3>
+                                <div id="photoGallery" class="photo-grid">
+                                    <!-- 动态插入拍照结果 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据分析视图 -->
+                <div id="analytics" class="view">
+                    <div class="page-header">
+                        <h2>数据分析</h2>
+                        <div class="header-actions">
+                            <button class="btn btn--secondary" onclick="exportReport()">导出报表</button>
+                            <button class="btn btn--primary" onclick="refreshAnalytics()">刷新数据</button>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-grid">
+                        <div class="card">
+                            <div class="card__body">
+                                <h3>销售分析</h3>
+                                <canvas id="analyticsChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card__body">
+                                <h3>分类库存分析</h3>
+                                <canvas id="inventoryChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 产品添加/编辑模态框 -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="productModalTitle">添加产品</h3>
+                <button class="modal-close" onclick="closeProductModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <div class="form-group">
+                        <label class="form-label">产品名称</label>
+                        <input type="text" class="form-control" id="productName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">表情</label>
+                        <input type="text" class="form-control" id="productEmoji" placeholder="🍕">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">价格</label>
+                        <input type="number" class="form-control" id="productPrice" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">库存</label>
+                        <input type="number" class="form-control" id="productStock" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">分类</label>
+                        <select class="form-control" id="productCategory" required>
+                            <option value="">选择分类</option>
+                            <option value="烤肠系列">烤肠系列</option>
+                            <option value="虾肠系列">虾肠系列</option>
+                            <option value="披萨系列">披萨系列</option>
+                            <option value="小笼汤包系列">小笼汤包系列</option>
+                            <option value="酥饼系列">酥饼系列</option>
+                            <option value="鸡排系列">鸡排系列</option>
+                            <option value="鸡翅系列">鸡翅系列</option>
+                            <option value="纸皮烧卖系列">纸皮烧卖系列</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">状态</label>
+                        <select class="form-control" id="productStatus" required>
+                            <option value="available">在售</option>
+                            <option value="unavailable">停售</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn--secondary" onclick="closeProductModal()">取消</button>
+                <button class="btn btn--primary" onclick="saveProduct()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库存调整模态框 -->
+    <div id="inventoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>库存调整</h3>
+                <button class="modal-close" onclick="closeInventoryModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="inventoryForm">
+                    <div class="form-group">
+                        <label class="form-label">产品</label>
+                        <select class="form-control" id="inventoryProduct" required>
+                            <option value="">选择产品</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">调整类型</label>
+                        <select class="form-control" id="inventoryType" required>
+                            <option value="">选择类型</option>
+                            <option value="入库">入库</option>
+                            <option value="出库">出库</option>
+                            <option value="盘点">盘点调整</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">数量</label>
+                        <input type="number" class="form-control" id="inventoryQuantity" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="inventoryNote" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn--secondary" onclick="closeInventoryModal()">取消</button>
+                <button class="btn btn--primary" onclick="saveInventoryAdjustment()">确认调整</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
