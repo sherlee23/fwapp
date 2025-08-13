@@ -1,8 +1,0 @@
-{
-  "name": "Fengwei Pai Food Store",
-  "description": "A modern e-commerce application for ordering delicious, freshly made food items. Featuring a product catalog, shopping cart, and a streamlined checkout process.",
-  "requestFramePermissions": [
-    "camera"
-  ],
-  "prompt": ""
-}
